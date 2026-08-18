@@ -1,0 +1,15 @@
+--- a/src/nvidia/arch/nvalloc/unix/src/os.c
++++ b/src/nvidia/arch/nvalloc/unix/src/os.c
+@@ -2144,6 +2144,12 @@
+         }
+     }
+ 
++    if (((pGpu->idInfo.PCIDeviceID >> 16) == 0x20C2) ||
++        ((pGpu->idInfo.PCIDeviceID >> 16) == 0x2082))
++    {
++        *pTimeoutUs = 60 * 1000000;
++    }
++
+     *pFlags = GPU_TIMEOUT_FLAGS_OSTIMER;
+ 
+     *pScale = 1;
