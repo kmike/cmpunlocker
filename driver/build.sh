@@ -52,8 +52,9 @@ PATCH_ORDER=(
     ce-scrub-workarounds.patch
     persistent-sw-state.patch
     pcie-gen2.patch
-    pcie-gen2-probe-retrain.patch
     name-string.patch
+    bar1-resize-unlock.patch
+    floorsweep-guard.patch
 )
 PATCH_FILES=()
 for name in "${PATCH_ORDER[@]}"; do

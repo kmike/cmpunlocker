@@ -71,11 +71,11 @@
 +                    { 0x008200f0U, 0xffffffffU, "OPTB_F0" },
 +                    { 0x008200f4U, 0xffffffffU, "OPTB_F4" },
 +                    { 0x00823800U, 0xffffffffU, "FEAT_OVR_ECC_PLM" },
-+                    { 0x0082057cU, 0x00000000U, "OPT_GEN23" },
-+                    { 0x0008e120U, 0x00000000U, "XP3G_VAL0" },
-+                    { 0x0008e110U, 0x00000001U, "XP3G_OVR0" },
-+                    { 0x0008e12cU, 0x00200000U, "XP3G_VAL3" },
-+                    { 0x0008e11cU, 0x00000004U, "XP3G_OVR3" },
++                    { 0x008200f4U, 0xffffffffU, "OPTB_F4_r2" },
++                    { 0x008200f4U, 0xffffffffU, "OPTB_F4_r3" },
++                    { 0x008200f4U, 0xffffffffU, "OPTB_F4_r4" },
++                    { 0x008200f4U, 0xffffffffU, "OPTB_F4_r5" },
++                    { 0x008200f4U, 0xffffffffU, "OPTB_F4_r6" },
 +                };
 +                NvU32 xi, xattempt;
 +                NV_STATUS xpStatus;
@@ -144,7 +144,7 @@
 +                        GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
 +                        GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
 +                        xpStatus = kgspSec2PostblTimingRefillPayload(pGpu, pKernelGsp,
-+                            PCIE_GEN2_VSEC_DEVICE_ADDR, vsecDevWant);
++                            0x008200f4U, 0xffffffffU);
 +                        if (xpStatus != NV_OK)
 +                            continue;
 +                        xpStatus = kgspExecuteBooterLoad_HAL(pGpu, pKernelGsp,
@@ -175,7 +175,7 @@
 +                        GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
 +                        GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
 +                        xpStatus = kgspSec2PostblTimingRefillPayload(pGpu, pKernelGsp,
-+                            PCIE_GEN2_PRIV_MISC_1_ADDR, misc1Want);
++                            0x008200f4U, 0xffffffffU);
 +                        if (xpStatus != NV_OK)
 +                            continue;
 +                        xpStatus = kgspExecuteBooterLoad_HAL(pGpu, pKernelGsp,
@@ -200,7 +200,7 @@
 +            {
 +                NvU32 hier = GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR);
 +                hier = (hier & ~(1U << 12)) | (1U << 0);
-+                GPU_REG_WR32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR, hier);
++                (void)hier; (void)GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe vsec hierarchy=0x%08x device=0x%08x\n",
 +                          GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR),
@@ -213,22 +213,22 @@
 +                NvU32 cya0;
 +                lc2 = (lc2 & ~0x0000000FU) | PCIE_GEN2_LINK_SPEED;
 +                lc2 = (lc2 & ~0x000F0000U) | 0x000F0000U;
-+                GPU_REG_WR32(pGpu, PCIE_GEN2_LINK_CTRL_2_ADDR, lc2);
++                (void)lc2; (void)GPU_REG_RD32(pGpu, PCIE_GEN2_LINK_CTRL_2_ADDR);
 +                cya0 = GPU_REG_RD32(pGpu, 0x0008c2c0U);
 +                cya0 = cya0 & ~(1U << 2);
-+                GPU_REG_WR32(pGpu, 0x0008c2c0U, cya0);
++                (void)cya0; (void)GPU_REG_RD32(pGpu, 0x0008c2c0U);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe CYA_0 after clear DIS_G2: 0x%08x (bit2=%u)\n",
 +                          GPU_REG_RD32(pGpu, 0x0008c2c0U),
 +                          (GPU_REG_RD32(pGpu, 0x0008c2c0U) >> 2) & 1U);
 +                linkCfg = GPU_REG_RD32(pGpu, 0x0008c040U);
 +                linkCfg = (linkCfg & ~0x000C0000U) | (0x2U << 18);
-+                GPU_REG_WR32(pGpu, 0x0008c040U, linkCfg);
++                (void)linkCfg; (void)GPU_REG_RD32(pGpu, 0x0008c040U);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe LINK_CONFIG_0 after MAX_RATE=2: 0x%08x\n",
 +                          GPU_REG_RD32(pGpu, 0x0008c040U));
-+                GPU_REG_WR32(pGpu, PCIE_GEN2_PL_LINK_RATE_ADDR, PCIE_GEN2_PL_LINK_RATE_VALUE);
-+                GPU_REG_WR32(pGpu, 0x0008872cU, 0x00000006U);
++                (void)PCIE_GEN2_PL_LINK_RATE_VALUE; (void)GPU_REG_RD32(pGpu, PCIE_GEN2_PL_LINK_RATE_ADDR);
++                (void)GPU_REG_RD32(pGpu, 0x0008872cU);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe XVE_OVR@8872c=0x%08x; skip mid-boot retrain\n",
 +                          GPU_REG_RD32(pGpu, 0x0008872cU));
@@ -278,7 +278,7 @@
 +            NvU32 misc1Late = GPU_REG_RD32(pGpu, PCIE_GEN2_PRIV_MISC_1_ADDR_LATE);
 +            NvU32 misc1WantLate = (misc1Late | PCIE_GEN2_PRIV_MISC_1_GEN2_EN_LATE)
 +                                  & ~PCIE_GEN2_PRIV_MISC_1_GEN2_VAL_LATE;
-+            GPU_REG_WR32(pGpu, PCIE_GEN2_PRIV_MISC_1_ADDR_LATE, misc1WantLate);
++            (void)misc1WantLate; (void)GPU_REG_RD32(pGpu, PCIE_GEN2_PRIV_MISC_1_ADDR_LATE);
 +            NV_PRINTF(LEVEL_ERROR,
 +                      "SEC2_DEBUG: PCIe PRIV_MISC_1 late pre=0x%08x post=0x%08x\n",
 +                      misc1Late,
@@ -286,18 +286,18 @@
 +            {
 +                NvU32 cyaLate = GPU_REG_RD32(pGpu, 0x0008c2c0U);
 +                cyaLate = cyaLate & ~(1U << 2);
-+                GPU_REG_WR32(pGpu, 0x0008c2c0U, cyaLate);
++                (void)cyaLate; (void)GPU_REG_RD32(pGpu, 0x0008c2c0U);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe CYA_0 late clear DIS_G2: 0x%08x (bit2=%u)\n",
 +                          GPU_REG_RD32(pGpu, 0x0008c2c0U),
 +                          (GPU_REG_RD32(pGpu, 0x0008c2c0U) >> 2) & 1U);
 +                NvU32 linkCfgLate = GPU_REG_RD32(pGpu, 0x0008c040U);
 +                linkCfgLate = (linkCfgLate & ~0x000C0000U) | (0x2U << 18);
-+                GPU_REG_WR32(pGpu, 0x0008c040U, linkCfgLate);
++                (void)linkCfgLate; (void)GPU_REG_RD32(pGpu, 0x0008c040U);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe LINK_CONFIG_0 late MAX_RATE=2: 0x%08x\n",
 +                          GPU_REG_RD32(pGpu, 0x0008c040U));
-+                GPU_REG_WR32(pGpu, 0x0008872cU, 0x00000006U);
++                (void)GPU_REG_RD32(pGpu, 0x0008872cU);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe XVE_OVR late=0x%08x\n",
 +                          GPU_REG_RD32(pGpu, 0x0008872cU));
