@@ -1,6 +1,6 @@
 --- a/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c
 +++ b/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c
-@@ -4942,6 +4942,260 @@
+@@ -4942,6 +4942,262 @@
                        devId);
          }
  
@@ -199,7 +199,9 @@
 +
 +            {
 +                NvU32 hier = GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR);
-+                hier = (hier & ~(1U << 12)) | (1U << 0);
++                /* Gen3: keep NV_GEN3_PCIE (b12) set. RM reads HIERARCHY, not DEVICE,
++                 * for its "Gen3 enabled by VBIOS" decision, and the card ships 0x1001. */
++                hier = hier | (1U << 12) | (1U << 0);
 +                GPU_REG_WR32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR, hier);
 +                NV_PRINTF(LEVEL_ERROR,
 +                          "SEC2_DEBUG: PCIe vsec hierarchy=0x%08x device=0x%08x\n",
