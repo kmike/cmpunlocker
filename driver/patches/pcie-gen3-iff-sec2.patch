@@ -1,6 +1,6 @@
 --- a/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:00:41.698263340 -0700
 +++ b/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:00:41.698974465 -0700
-@@ -4914,6 +4914,115 @@
+@@ -4914,6 +4914,129 @@
                    GPU_REG_RD32(pGpu, 0x001fa7c4U),
                    GPU_REG_RD32(pGpu, 0x001fa7ccU));
  
@@ -97,7 +97,21 @@
 +            GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
 +            GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
 +
++            /*
++             * Give the SEC2 path the same observation window the host-sourced control
++             * got. Host-sourced, IFF_SW_FUSING stays 1 for a full second; reading it
++             * microseconds after the Booter returns would not be a comparable test.
++             * Spin on it and report how many polls elapsed so the window is quantified.
++             */
++            for (g3Poll = 0; g3Poll < 200000U; g3Poll++)
++            {
++                if ((GPU_REG_RD32(pGpu, 0x00820088U) & 1U) == 0U)
++                    break;
++            }
 +            g3IffAfter = GPU_REG_RD32(pGpu, 0x00820088U);
++            NV_PRINTF(LEVEL_ERROR,
++                      "GEN3_IFF: polled IFF_SW_FUSING %u times before reading 0x%08x\n",
++                      g3Poll, g3IffAfter);
 +            NV_PRINTF(LEVEL_ERROR,
 +                      "GEN3_IFF: RESULT IFF_SW_FUSING=0x%08x self_cleared=%s "
 +                      "GEN3_DIS %u -> %u EN_SW_OVR=0x%08x\n",
