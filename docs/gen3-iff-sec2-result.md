@@ -68,3 +68,44 @@ happens without touching `DISABLE_SW_OVERRIDE`, but it is not sufficient — the
 is what the veto blocks, and it blocks it from SEC2 too.
 
 For an 8 GB card, Gen3 through this route requires a free RIR record. There is not one.
+
+---
+
+# Addendum: VSEC_DEVICE bit 12, and why Gen2 actually works
+
+`NV_XVE_VSEC_..._DEVICE` (0x8860C) bit 12 is `NV_GEN3_PCIE`, and DEVICE is the declaration
+LnkCap follows. Setting it was the last identified-but-never-attempted action for Gen3 on an
+8 GB card. It has now been attempted through the Booter, the SEC2-HS path.
+
+```
+GEN3_VSEC: pre DEVICE=0x00000801 want=0x00001801 LnkCap=0x00456102 LnkCap2=0x00000006
+GEN3_VSEC: booter attempt=0/1/2  rd=0x00000801  b12=0
+GEN3_VSEC: RESULT b12=REFUSED  LnkCap and LnkCap2 both unchanged
+```
+
+**Positive control, same boot, same path:** `PRIV_MISC_1 pre=0xe0b48500 want=0xe0b4ad00` ->
+`rd=0xe0b4ad00`, succeeded. The Booter write path works; `VSEC_DEVICE` bit 12 specifically
+refuses it.
+
+## Correction: Gen2 is not delivered by VSEC_DEVICE
+
+It is delivered by `NV_XVE_PRIV_MISC_1`:
+
+```
+misc1Want = (misc1 | GEN2_EN) & ~GEN2_VAL      // set bits 11/13, clear bits 12/14
+  bit 11 CYA_GEN2_PROTO_OVERRIDE_EN     bit 12 VAL  1=GEN1P1 0=GEN2
+  bit 13 CYA_GEN2_SPEED_OVERRIDE_EN     bit 14 VAL  1=2P5    0=5P0
+```
+
+`VSEC_DEVICE` bit 0 comes up set as a *consequence* of that, not as its cause.
+
+## And the Gen3 analogue of that lever is already closed
+
+```
+  bit 30 CYA_GEN3_SPEED_OVERRIDE_EN     bit 31 VAL  1=5P0  0=8P0
+```
+
+On these cards it reads EN=1, VAL=5P0 -- armed and actively clamping. Retested with a positive
+control (the GEN2 override clamps to 2.5 and releases to 5.0 on demand, proving the register
+mechanism works): **the Gen3 override can only clamp, never raise.** Fully released, with both
+boot fuses overridden, the link still stops at vector 0x03.

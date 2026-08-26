@@ -1,0 +1,84 @@
+--- a/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:15:44.517773431 -0700
++++ b/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:15:44.518199172 -0700
+@@ -5226,6 +5226,81 @@
+                                   "SEC2_DEBUG: PCIe VSEC_DEVICE booter FAILED\n");
+                 }
+ 
++                /*
++                 * --------------------------------------------------------------
++                 * PCIe Gen3: VSEC_DEVICE.NV_GEN3_PCIE (bit 12), SEC2-sourced.
++                 *
++                 * The block above delivers Gen2 by Booter-writing bit 0 of this
++                 * same register. Bit 12 is NV_GEN3_PCIE -- the identical field
++                 * class (R-CVF) in the identical register -- and DEVICE is the
++                 * "this device is" declaration that LnkCap follows. HIERARCHY
++                 * (0x88610) already declares b0 and b12 capable; DEVICE is the
++                 * one that does not.
++                 *
++                 * The precedent is exact and it is live on this card: bit 0's own
++                 * fuse (OPT_PCIE_BOOT_GEN23_DISABLE) reads 1 = disabled, and the
++                 * Booter sets the capability bit anyway. So an SEC2-sourced write
++                 * to this register is not obliged to respect the fuse. Bit 12's
++                 * fuse (OPT_DISABLE_GEN3_SPEED) likewise reads 1 on an 8 GB part,
++                 * where it is unreachable -- the FF pool takes no cells and RIR is
++                 * factory-spent. This is the one path to Gen3 that does not need
++                 * to change a fuse at all.
++                 *
++                 * Read-modify-write, so the Gen2 bit and FB_SIZE_OVERRIDE set
++                 * earlier are preserved.
++                 * --------------------------------------------------------------
++                 */
++                {
++                    NvU32 g3Dev  = GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_DEVICE_ADDR);
++                    NvU32 g3Want = g3Dev | (1U << 12);
++                    NvU32 g3CapPre  = GPU_REG_RD32(pGpu, 0x00088084U);
++                    NvU32 g3Cap2Pre = GPU_REG_RD32(pGpu, 0x000880a4U);
++                    NvBool g3Wrote = NV_FALSE;
++
++                    NV_PRINTF(LEVEL_ERROR,
++                              "GEN3_VSEC: pre DEVICE=0x%08x want=0x%08x "
++                              "HIERARCHY=0x%08x LnkCap=0x%08x LnkCap2=0x%08x\n",
++                              g3Dev, g3Want,
++                              GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_HIERARCHY_ADDR),
++                              g3CapPre, g3Cap2Pre);
++
++                    for (xattempt = 0; xattempt < 3 && !g3Wrote; xattempt++)
++                    {
++                        NvU32 g3Rd;
++
++                        GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
++                        GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
++
++                        xpStatus = kgspSec2PostblTimingRefillPayload(pGpu, pKernelGsp,
++                            PCIE_GEN2_VSEC_DEVICE_ADDR, g3Want);
++                        if (xpStatus != NV_OK)
++                            continue;
++
++                        xpStatus = kgspExecuteBooterLoad_HAL(pGpu, pKernelGsp,
++                            memdescGetPhysAddr(pKernelGsp->pWprMetaDescriptor, AT_GPU, 0));
++
++                        g3Rd = GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_DEVICE_ADDR);
++                        NV_PRINTF(LEVEL_ERROR,
++                                  "GEN3_VSEC: booter attempt=%u status=0x%x rd=0x%08x "
++                                  "b12=%u\n",
++                                  xattempt, xpStatus, g3Rd, (g3Rd >> 12) & 1U);
++
++                        if ((g3Rd & (1U << 12)) != 0U)
++                            g3Wrote = NV_TRUE;
++                    }
++
++                    GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
++                    GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
++
++                    NV_PRINTF(LEVEL_ERROR,
++                              "GEN3_VSEC: RESULT b12=%s DEVICE=0x%08x "
++                              "LnkCap 0x%08x -> 0x%08x  LnkCap2 0x%08x -> 0x%08x\n",
++                              g3Wrote ? "SET-GEN3-CAPABLE" : "REFUSED",
++                              GPU_REG_RD32(pGpu, PCIE_GEN2_VSEC_DEVICE_ADDR),
++                              g3CapPre,  GPU_REG_RD32(pGpu, 0x00088084U),
++                              g3Cap2Pre, GPU_REG_RD32(pGpu, 0x000880a4U));
++                }
++
+                 {
+                     NvU32 misc1 = GPU_REG_RD32(pGpu, PCIE_GEN2_PRIV_MISC_1_ADDR);
+                     NvU32 misc1Want = (misc1 | PCIE_GEN2_PRIV_MISC_1_GEN2_EN)
