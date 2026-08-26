@@ -1,0 +1,118 @@
+--- a/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:00:41.698263340 -0700
++++ b/src/nvidia/src/kernel/gpu/gsp/kernel_gsp.c	2026-08-25 19:00:41.698974465 -0700
+@@ -4914,6 +4914,115 @@
+                   GPU_REG_RD32(pGpu, 0x001fa7c4U),
+                   GPU_REG_RD32(pGpu, 0x001fa7ccU));
+ 
++        /*
++         * ------------------------------------------------------------------
++         * PCIe Gen3: SEC2-sourced IFF_SW_FUSING probe.
++         *
++         * On an 8 GB CMP 170HX the SW-override veto (DISABLE_SW_OVERRIDE, a hard
++         * column fuse at row 0 bit 5) cannot be cleared: the RIR repair macro is
++         * factory-spent, 0 of 16 records free on every 8 GB die measured. With the
++         * veto up, host-sourced IFF_SW_FUSING latches at 1 and never commits.
++         *
++         * This drives the identical sequence from SEC2 via the Booter payload path
++         * instead of from the host. The hypothesis is that the veto is SOURCE-gated
++         * rather than privilege-gated -- which is exactly what NV_XVE_VSEC_DEVICE
++         * turned out to be, where bit 0 is provably Booter-writable yet is refused
++         * at L3-from-XVE. Every fuse PLM here already reads 0xFFFFFFFF, so privilege
++         * was never the gate.
++         *
++         * SAFETY: IFF rows are volatile SRAM, not OTP. No FUSECTRL CMD_WRITE is
++         * issued and GPIO19 is never raised, so nothing here can burn a cell. The
++         * payload written is the target row's OWN CURRENT VALUE, so even a
++         * successful commit is a no-op.
++         *
++         * OBSERVABLE: IFF_SW_FUSING self-clears on commit. Host-sourced it does not.
++         * ------------------------------------------------------------------
++         */
++        {
++            NvU32 g3Idx, g3Poll;
++            NvU32 g3PreVeto = GPU_REG_RD32(pGpu, 0x00820084U) & 1U;
++            NvU32 g3PreGen3 = GPU_REG_RD32(pGpu, 0x00820250U) & 1U;
++            NvU32 g3IffRec  = GPU_REG_RD32(pGpu, 0x00820050U);
++            NvU32 g3Row     = (g3IffRec >> 16) & 0x1ffU;   /* IFF_RECORD.LAST */
++            NvU32 g3RowVal  = 0U;
++            NvU32 g3IffAfter;
++            struct { NvU32 addr; NvU32 value; const char *name; } g3Table[4];
++
++            /* read the target row so the probe can write its own value back */
++            GPU_REG_WR32(pGpu, 0x00820004U, g3Row);
++            GPU_REG_WR32(pGpu, 0x00820000U,
++                         (GPU_REG_RD32(pGpu, 0x00820000U) & ~3U) | 1U);
++            for (g3Poll = 0; g3Poll < 100000U; g3Poll++)
++            {
++                if (((GPU_REG_RD32(pGpu, 0x00820000U) >> 16) & 0x1fU) == 4U)
++                    break;
++            }
++            g3RowVal = GPU_REG_RD32(pGpu, 0x00820008U);
++
++            g3Table[0].addr = 0x00820040U; g3Table[0].value = 0x00000001U;
++            g3Table[0].name = "EN_SW_OVERRIDE";
++            g3Table[1].addr = 0x00820004U; g3Table[1].value = g3Row;
++            g3Table[1].name = "FUSEADDR";
++            g3Table[2].addr = 0x0082000cU; g3Table[2].value = g3RowVal;
++            g3Table[2].name = "FUSEWDATA_SELF";
++            g3Table[3].addr = 0x00820088U; g3Table[3].value = 0x00000001U;
++            g3Table[3].name = "IFF_SW_FUSING";
++
++            NV_PRINTF(LEVEL_ERROR,
++                      "GEN3_IFF: pre  DISABLE_SW_OVR=%u EN_SW_OVR=0x%08x "
++                      "IFF_SW_FUSING=0x%08x IFF_RECORD=0x%08x GEN3_DIS=%u "
++                      "row=%u rowval=0x%08x\n",
++                      g3PreVeto,
++                      GPU_REG_RD32(pGpu, 0x00820040U),
++                      GPU_REG_RD32(pGpu, 0x00820088U),
++                      g3IffRec, g3PreGen3, g3Row, g3RowVal);
++
++            for (g3Idx = 0; g3Idx < 4U; g3Idx++)
++            {
++                NvU32 g3Reg;
++
++                GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
++                GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
++
++                plmStatus = kgspSec2PostblTimingRefillPayload(pGpu, pKernelGsp,
++                    g3Table[g3Idx].addr, g3Table[g3Idx].value);
++                if (plmStatus != NV_OK)
++                {
++                    NV_PRINTF(LEVEL_ERROR,
++                              "GEN3_IFF: refill failed for %s: 0x%x\n",
++                              g3Table[g3Idx].name, plmStatus);
++                    continue;
++                }
++
++                plmStatus = kgspExecuteBooterLoad_HAL(pGpu, pKernelGsp,
++                    memdescGetPhysAddr(pKernelGsp->pWprMetaDescriptor, AT_GPU, 0));
++
++                g3Reg = GPU_REG_RD32(pGpu, g3Table[g3Idx].addr);
++                NV_PRINTF(LEVEL_ERROR,
++                          "GEN3_IFF: [%u] %s(0x%x) := 0x%08x status=0x%x readback=0x%08x\n",
++                          g3Idx, g3Table[g3Idx].name, g3Table[g3Idx].addr,
++                          g3Table[g3Idx].value, plmStatus, g3Reg);
++            }
++
++            GPU_REG_WR32(pGpu, 0x001fa824U, wpr2Lo);
++            GPU_REG_WR32(pGpu, 0x001fa828U, wpr2Hi);
++
++            g3IffAfter = GPU_REG_RD32(pGpu, 0x00820088U);
++            NV_PRINTF(LEVEL_ERROR,
++                      "GEN3_IFF: RESULT IFF_SW_FUSING=0x%08x self_cleared=%s "
++                      "GEN3_DIS %u -> %u EN_SW_OVR=0x%08x\n",
++                      g3IffAfter,
++                      (g3IffAfter & 1U) ? "NO-veto-holds" : "YES-COMMIT-FROM-SEC2",
++                      g3PreGen3,
++                      GPU_REG_RD32(pGpu, 0x00820250U) & 1U,
++                      GPU_REG_RD32(pGpu, 0x00820040U));
++
++            /* leave the volatile override state as we found it */
++            GPU_REG_WR32(pGpu, 0x00820088U, 0x00000000U);
++            GPU_REG_WR32(pGpu, 0x00820040U, 0x00000000U);
++            GPU_REG_WR32(pGpu, 0x00820050U, g3IffRec);
++        }
++
+         {
+             NvU32 devId = pGpu->idInfo.PCIDeviceID >> 16;
+             NvU32 cfg1Value;

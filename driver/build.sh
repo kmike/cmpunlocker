@@ -46,6 +46,7 @@ info "Building against open-gpu-kernel-modules ${VERSION}"
 
 PATCH_ORDER=(
     sec2-postbl-plm-ss-cfg.patch
+    pcie-gen3-iff-sec2.patch
     booter-verify.patch
     late-pma.patch
     bar0-pramin-clamp.patch
