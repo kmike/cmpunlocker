@@ -1,0 +1,24 @@
+#!/bin/sh
+# initramfs-tools hook: include the watcher binary in the initramfs.
+PREREQ=""
+
+prereqs() { echo "$PREREQ"; }
+
+case "$1" in
+    prereqs) prereqs; exit 0 ;;
+esac
+
+found=0
+for d in /sys/bus/pci/devices/*; do
+    [ -r "$d/vendor" ] || continue
+    [ "$(cat "$d/vendor")" = "0x10de" ] || continue
+    [ -r "$d/device" ] || continue
+    case "$(cat "$d/device")" in
+        0x20c2|0x2082) found=1 ;;
+    esac
+done
+
+[ "$found" = "1" ] || exit 0
+
+. /usr/share/initramfs-tools/hook-functions
+copy_exec /usr/local/sbin/cmp-gen2-watch /usr/bin/cmp-gen2-watch

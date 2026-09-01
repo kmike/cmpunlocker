@@ -242,10 +242,9 @@ systemctl daemon-reload
 ok "Removed legacy PCIe retrain helpers"
 
 if (( CONFIGURE_GEN2_SERVICE == 1 )); then
-    chmod +x "${SCRIPT_DIR}/tools/hammer.sh" \
-             "${SCRIPT_DIR}/tools/service.sh"
-    "${SCRIPT_DIR}/tools/service.sh" install
-    ok "Early-boot Gen2 retrain service armed (not started in this session)"
+    chmod +x "${SCRIPT_DIR}/tools/watch-setup.sh"
+    "${SCRIPT_DIR}/tools/watch-setup.sh" install
+    ok "Advertisement-triggered Gen2 retrain armed (initramfs + userspace stages; not started in this session)"
 else
     warn "--no-gen2-service given; early-boot PCIe retraining is not installed"
 fi

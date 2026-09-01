@@ -63,9 +63,18 @@ done
 rm -f /etc/systemd/system/cmpretrain.service /usr/local/sbin/retrain.sh
 rm -f /etc/systemd/system/cmp-gen2-retrain.service /usr/local/sbin/cmp-gen2-retrain.sh
 rm -f /etc/modprobe.d/cmp-pcie-gen2.conf
-systemctl disable --now gen2.service 2>/dev/null || true
-systemctl reset-failed gen2.service 2>/dev/null || true
+for unit in gen2.service cmp-gen2-watch.service; do
+    systemctl disable --now "${unit}" 2>/dev/null || true
+    systemctl reset-failed "${unit}" 2>/dev/null || true
+done
 rm -f /etc/systemd/system/gen2.service /usr/local/sbin/gen2-hammer
+rm -f /etc/systemd/system/cmp-gen2-watch.service /usr/local/sbin/cmp-gen2-watch
+rm -rf /usr/lib/dracut/modules.d/90cmpgen2watch
+rm -f /etc/initramfs-tools/hooks/cmp-gen2-watch \
+      /etc/initramfs-tools/scripts/init-top/cmp-gen2-watch
+if command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -u -k "$(uname -r)" >/dev/null 2>&1 || true
+fi
 systemctl daemon-reload 2>/dev/null || true
 ok "Removed PCIe Gen2 helpers"
 
