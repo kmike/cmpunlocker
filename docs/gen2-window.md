@@ -13,8 +13,9 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
    flip roughly **0.4 s later**. Outside that window the endpoint
    advertises Gen1, and a retrain against it lands Gen1 no matter what
    the root port wants. (On other combinations the flip persists at
-   runtime — those rigs train Gen2 with any late retrain, which is why
-   `0008` alone appears to work for some users and not others.)
+   runtime — those rigs train Gen2 with any late retrain, which is
+   why the probe-time retrain (`driver/patches/pcie-gen2-probe-retrain.patch`)
+   alone appears to work for some users and not others.)
 
 2. **Where the window sits depends on boot shape.** If the NVIDIA
    module loads from the initramfs, GSP bootstrap — and the window —

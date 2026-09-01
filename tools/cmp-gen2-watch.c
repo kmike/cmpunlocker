@@ -4,8 +4,8 @@
  * hammer.
  *
  * Mechanism (measured on GA100 CMP 170HX, driver 610.43.02, Sep 2026):
- * the driver patch (0007) flips the endpoint's LnkCap/LnkCtl2 to Gen2
- * during GSP bootstrap; that flipped state — the "advertisement window"
+ * the driver patch (driver/patches/pcie-gen2.patch) flips the endpoint's
+ * LnkCap/LnkCtl2 to Gen2 during GSP bootstrap; that flipped state — the "advertisement window"
  * — lasts only ~430 ms on some driver/platform combinations before
  * firmware reverts it. Any retrain fired outside the window hits a
  * Gen1-advertising endpoint and lands Gen1. Additionally, a Retrain
