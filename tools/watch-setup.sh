@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Install/remove the advertisement-triggered PCIe Gen2 retrain
 # (replacement for the legacy gen2.service hammer). Two stages:
-#   initramfs hooks  — for windows that open during initramfs module load
-#   systemd unit     — for windows that open after pivot
-# The watcher binary is built from tools/cmp-gen2-watch.c if a compiler
-# is present; otherwise an existing /usr/local/sbin binary is reused.
+#   initramfs hooks  — spawned pre-udev; survives the pivot
+#   systemd unit     — second net for windows that open later
+# The watcher binary is built from tools/cmp-gen2-watch.c (a C compiler
+# is required, as it already is for the patched kernel modules).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -42,11 +42,8 @@ supported_gpus() {
 }
 
 build() {
-    if ! command -v cc >/dev/null 2>&1; then
-        [[ -x "${WATCH_BIN}" ]] || die "no compiler and no prebuilt ${WATCH_BIN}"
-        warn "no compiler found; reusing existing ${WATCH_BIN}"
-        return 0
-    fi
+    command -v cc >/dev/null 2>&1 \
+        || die "no C compiler found (a compiler is already required to build the patched modules)"
     info "Building ${WATCH_BIN} from source"
     cc -O2 -Wall -o "${WATCH_BIN}.tmp" "${WATCH_SRC}"
     mv "${WATCH_BIN}.tmp" "${WATCH_BIN}"
