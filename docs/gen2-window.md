@@ -58,9 +58,16 @@ trained link state survives the advertisement reverting).
 
 Deployed at two stages so it works for every boot shape:
 
-- initramfs hooks (dracut module + initramfs-tools) — for windows that
-  open during initramfs module load;
-- a systemd userspace unit — for windows that open after pivot.
+- initramfs hooks (dracut module + initramfs-tools) — the watcher is
+  spawned before udev coldplug and, critically, SURVIVES the pivot to
+  the real root (observed under both dracut and classic init), so it
+  covers every window from initramfs start to its 60 s bound;
+- a systemd userspace unit as the second net, pulled in at
+  sysinit.target with DefaultDependencies=no (starts as early as the
+  machine's boot allows; measured T+9-15 s at multi-user.target on the
+  test rig vs T+13 s with the early ordering — early boot there is
+  CPU-bound). Between the two stages, window coverage is continuous
+  from initramfs start to T+90 s.
 
 State-triggered, never timer-blind: if the flip persists at runtime
 instead of reverting, the userspace stage catches it whenever it

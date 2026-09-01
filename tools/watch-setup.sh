@@ -69,8 +69,10 @@ install_stage() {
     build
 
 
-    # userspace stage
+    # userspace stage (clean stale wants-symlinks from earlier unit
+    # versions that used a different Install target, then enable)
     install -m 0644 "${UNIT_SRC}" "${UNIT_DST}"
+    rm -f /etc/systemd/system/multi-user.target.wants/${UNIT_NAME}
     systemctl daemon-reload
     systemctl enable "${UNIT_NAME}" >/dev/null
     ok "Enabled ${UNIT_NAME} (starts on next boot; not started now)"
