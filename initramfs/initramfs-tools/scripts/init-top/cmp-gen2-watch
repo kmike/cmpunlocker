@@ -1,8 +1,10 @@
 #!/bin/sh
 # initramfs-tools init-top: start the watcher detached before udev
-# coldplug / module load. Logs to /dev/kmsg (survives switch_root via
-# the kernel journal). Dies at pivot; the systemd unit takes over for
-# rootfs-loaded-module shapes.
+# coldplug/module load. No output redirection: the binary dual-logs
+# (stdout + /dev/kmsg best-effort), matching the dracut hook — a hard
+# >/dev/kmsg redirect here would kill the watcher in environments
+# where /dev/kmsg is not openable. Dies at pivot by design; the
+# systemd unit covers rootfs-loaded-module shapes after pivot.
 PREREQ=""
 
 prereqs() { echo "$PREREQ"; }
@@ -11,7 +13,6 @@ case "$1" in
     prereqs) prereqs; exit 0 ;;
 esac
 
-mkdir -p /run/initramfs 2>/dev/null
 if [ -x /usr/bin/cmp-gen2-watch ]; then
-    /usr/bin/cmp-gen2-watch --duration-ms 60000 >/dev/kmsg 2>&1 &
+    /usr/bin/cmp-gen2-watch --duration-ms 60000 &
 fi
