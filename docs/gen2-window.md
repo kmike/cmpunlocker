@@ -35,6 +35,17 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
    in-window retrains with the parent port target still at Gen1
    produced zero link events.)
 
+## The fix (and a closing note on persistence)
+
+Once a link trains Gen2 inside the window, its `LnkCap` advertisement
+*stays* flipped at runtime — the revert only afflicts boots whose
+window was missed. Persistence of the advertisement is a consequence
+of the trained link, not a separate driver or VBIOS mode; rigs that
+"hold" the advertisement at runtime and rigs that "revert" are the
+same hardware, differing only in whether anything trained in-window
+that boot. (Verified dual-card: both links trained in-window, both
+`LnkCap` read 5 GT/s at runtime hours later, warm and cold boots.)
+
 ## The fix
 
 Poll each card's `LnkCap` at 1 kHz. The instant a card advertises
@@ -63,9 +74,10 @@ appears.
 
 ## Debugging notes
 
-- The initramfs stage logs to the kernel journal
-  (`journalctl -k -b 0 | grep cmp-gen2-watch`); the userspace stage to
-  `/var/log/cmp-gen2-watch.log`.
+- Finding the initramfs-stage trace: `journalctl -b 0 | grep "flip
+  detected"` — lines appear both as unit stdout (dracut-pre-udev[..])
+  and as unattributed kmsg records (prefix "unknown:"). The userspace
+  stage logs to `/var/log/cmp-gen2-watch.log`.
 - The watcher is stdio-unbuffered on purpose: buffered logs are lost
   when the initramfs is torn down at `switch_root`.
 - Do not pipe the initramfs-stage watcher through `tee` or other
