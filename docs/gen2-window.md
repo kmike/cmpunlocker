@@ -21,10 +21,14 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
    happen *before* systemd userspace starts (observed: window at
    T+5.4 s, systemd at T+13 s on a dual-socket server with LVM). No
    userspace service, hammer loop, or `setpci` one-shot can reach that
-   window. On fast consumer boards the module loads later and the
-   window lands inside a userspace hammer's reach — which is why the
-   old timer-based hammer worked on reference hardware and never on
-   servers.
+   window. Whether any userspace retrain can reach the window depends
+   on boot shape: if the module loads from the root filesystem
+   instead, the window opens after userspace is up and late retrains
+   can work. Community reports are consistent with that split — the
+   old hammer succeeding on consumer reference hardware and failing
+   0/1200 on at least one other server — but only the initramfs-
+   loaded shape was measured directly, on the rig these timings come
+   from.
 
 3. **A retrain whose effective target equals the current speed is a
    silent no-op.** Writing Retrain Link while the target link speed
@@ -40,11 +44,13 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
 Once a link trains Gen2 inside the window, its `LnkCap` advertisement
 *stays* flipped at runtime — the revert only afflicts boots whose
 window was missed. Persistence of the advertisement is a consequence
-of the trained link, not a separate driver or VBIOS mode; rigs that
-"hold" the advertisement at runtime and rigs that "revert" are the
-same hardware, differing only in whether anything trained in-window
-that boot. (Verified dual-card: both links trained in-window, both
-`LnkCap` read 5 GT/s at runtime hours later, warm and cold boots.)
+of the trained link, not a separate driver or VBIOS mode — on the
+rigs measured here (dual-card, warm and cold boots: both links trained
+in-window, both `LnkCap` read 5 GT/s at runtime hours later). Caveat:
+one community report (an Intel-workstation rig in the upstream wiki's
+failure table) describes `LnkCap` holding Gen2 at runtime *without* a
+trained link, so an independently persistent advertisement may also
+exist. Treat runtime persistence as evidence, not proof.
 
 ## The fix
 

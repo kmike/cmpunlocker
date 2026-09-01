@@ -35,10 +35,10 @@ If Gen1 persists:
   driver patches did not open the advertisement window (check dmesg for the
   SEC2_DEBUG lines); a flip without a resulting `LnkSta` speed change means
   the retrain did not take.
-- The most common historical cause was structural, not configuration: the
-  old timer-based hammer fired after the ~0.4 s advertisement window had
-  already closed on slow-booting systems (module loading from the
-  initramfs puts the window before systemd starts). The two-stage
+- A structural cause measured on one rig (and matching at least one
+  community report): the old timer-based hammer fired after the ~0.4 s
+  advertisement window had already closed, because the module loading
+  from the initramfs puts the window before systemd starts. The two-stage
   advertisement-triggered watcher replaced it precisely for that case —
   see [gen2-window.md](gen2-window.md) for the measured mechanism,
   including why a late retrain fails silently (a retrain whose effective
