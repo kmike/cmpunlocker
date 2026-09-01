@@ -7,9 +7,9 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
 
 ## The three facts
 
-1. **The patch opens a short window, not a persistent state.** Patch
-   `0007` flips the endpoint's `LnkCap`/`LnkCtl2` to Gen2 during GSP
-   bootstrap. On some driver/platform combinations firmware reverts the
+1. **The patch opens a short window, not a persistent state.** The
+   Gen2 driver patch (`driver/patches/0007-pcie-gen2.patch`) flips the
+   endpoint's `LnkCap`/`LnkCtl2` to Gen2 during GSP bootstrap. On some driver/platform combinations firmware reverts the
    flip roughly **0.4 s later**. Outside that window the endpoint
    advertises Gen1, and a retrain against it lands Gen1 no matter what
    the root port wants. (On other combinations the flip persists at
@@ -24,11 +24,10 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
    window. Whether any userspace retrain can reach the window depends
    on boot shape: if the module loads from the root filesystem
    instead, the window opens after userspace is up and late retrains
-   can work. Community reports are consistent with that split — the
-   old hammer succeeding on consumer reference hardware and failing
-   0/1200 on at least one other server — but only the initramfs-
-   loaded shape was measured directly, on the rig these timings come
-   from.
+   can work. All timings in this document are from one rig
+   (dual-socket server, initramfs-loaded module); the two-stage
+   deployment below exists precisely so the watcher does not depend on
+   where the window lands.
 
 3. **A retrain whose effective target equals the current speed is a
    silent no-op.** Writing Retrain Link while the target link speed
@@ -46,11 +45,8 @@ Once a link trains Gen2 inside the window, its `LnkCap` advertisement
 window was missed. Persistence of the advertisement is a consequence
 of the trained link, not a separate driver or VBIOS mode — on the
 rigs measured here (dual-card, warm and cold boots: both links trained
-in-window, both `LnkCap` read 5 GT/s at runtime hours later). Caveat:
-one community report (an Intel-workstation rig in the upstream wiki's
-failure table) describes `LnkCap` holding Gen2 at runtime *without* a
-trained link, so an independently persistent advertisement may also
-exist. Treat runtime persistence as evidence, not proof.
+in-window, both `LnkCap` read 5 GT/s at runtime hours later). Treat
+runtime persistence as evidence of an in-window train, not as proof.
 
 ## The fix
 

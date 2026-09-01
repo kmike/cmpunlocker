@@ -27,6 +27,7 @@ Below are memory and performance results after applying the unlock:
 - NVIDIA CMP 170HX
 - **nvidia-open 610.43.0x already installed** (libs + firmware)
 - Kernel headers matching the running kernel (`linux-headers-$(uname -r)` / `kernel-devel`)
+- A C compiler (needed to build the patched modules and the Gen2 watcher)
 - Secure Boot disabled (patched modules are unsigned)
 - Network access on first install (downloads matching stock `open-gpu-kernel-modules` sources)
 - Python 3 (used at build time to select 8GB/10GB geometry)

@@ -20,29 +20,12 @@ Before you go asking in the Discord for help, here is a FAQ you should take a lo
 
 ## PCIe still at Gen1 after install
 
-First, verify with the honest indicator (never `nvidia-smi`, which caches
-probe-time values):
+- Verify with `sudo ./tools/watch-setup.sh verify` — it reads `LnkSta` per card. Do not trust `nvidia-smi` for this; it caches probe-time values.
 
-    sudo ./tools/watch-setup.sh verify     # reads LnkSta per card
+- Confirm IOMMU passthrough mode is enabled. Depending on your operating system, enabling IOMMU passthrough can vary.
 
-If Gen1 persists:
+- Check the watcher trace: `journalctl -b 0 | grep "flip detected"` (userspace stage also logs to `/var/log/cmp-gen2-watch.log`). No flip line means the driver patch never opened the advertisement window; a flip without a resulting speed change means the retrain did not take. The full mechanism, including why late retrains fail silently, is in [gen2-window.md](gen2-window.md).
 
-- Confirm IOMMU passthrough mode is enabled (the installer configures it;
-  `--no-iommu` skips it).
-- Find the watcher trace: `journalctl -b 0 | grep "flip detected"` (initramfs
-  stage; also `/var/log/cmp-gen2-watch.log` for the userspace stage). You
-  should see one flip + retrain per card. No flip line at all means the
-  driver patches did not open the advertisement window (check dmesg for the
-  SEC2_DEBUG lines); a flip without a resulting `LnkSta` speed change means
-  the retrain did not take.
-- A structural cause measured on one rig (and matching at least one
-  community report): the old timer-based hammer fired after the ~0.4 s
-  advertisement window had already closed, because the module loading
-  from the initramfs puts the window before systemd starts. The two-stage
-  advertisement-triggered watcher replaced it precisely for that case —
-  see [gen2-window.md](gen2-window.md) for the measured mechanism,
-  including why a late retrain fails silently (a retrain whose effective
-  target equals the current speed is a spec-level no-op).
 - If this still persists, refer to the Discord protocol at the end of the document.
 
 ---
