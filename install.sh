@@ -25,7 +25,8 @@ Usage: sudo ./install.sh [--profile=8gb|10gb] [--no-iommu] [--no-gen2-service]
   --profile=10gb  Force 10GB metadata label (geometry is still chosen per PCI ID)
   --no-iommu      Do not touch the kernel command line (leave IOMMU settings alone)
   --no-gen2-service
-                  Do not install the early-boot PCIe Gen2 retrain service
+                  Do not install the advertisement-triggered PCIe Gen2
+                  retrain (initramfs hooks + userspace watcher)
 
 By default the installer appends intel_iommu=on / amd_iommu=on plus iommu=pt to
 the kernel command line so the IOMMU runs in passthrough mode. This takes effect
@@ -405,8 +406,8 @@ echo -e "  4. Or check manually: ${CYAN}nvidia-smi${NC}"
 echo -e "  5. Unlock logs: ${CYAN}sudo dmesg | grep SEC2_DEBUG${NC}"
 echo -e "  6. Verify IOMMU after reboot: ${CYAN}cat /proc/cmdline${NC} and ${CYAN}ls /sys/class/iommu${NC}"
 if (( CONFIGURE_GEN2_SERVICE == 1 )); then
-    echo -e "  7. Verify negotiated Gen2: ${CYAN}sudo ./tools/service.sh verify${NC}"
-    echo -e "     Recovery boot option: ${CYAN}systemd.mask=gen2.service${NC}"
+    echo -e "  7. Verify negotiated Gen2: ${CYAN}sudo ./tools/watch-setup.sh verify${NC}"
+    echo -e "     Recovery boot option: ${CYAN}systemd.mask=cmp-gen2-watch.service${NC}"
 fi
 echo ""
 echo "This script removed the nvidia DKMS kernel modules. You will need to re-run this script after each kernel upgrade"

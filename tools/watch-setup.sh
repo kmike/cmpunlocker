@@ -67,7 +67,6 @@ disable_legacy() {
 install_stage() {
     require_root
     build
-    install -m 0755 "${WATCH_BIN}" "${WATCH_BIN}" 2>/dev/null || true
 mkdir -p /usr/local/share/cmpunlocker
 install -m 0644 "${PROJECT_DIR}/docs/gen2-window.md" /usr/local/share/cmpunlocker/gen2-window.md
 

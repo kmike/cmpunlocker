@@ -20,8 +20,29 @@ Before you go asking in the Discord for help, here is a FAQ you should take a lo
 
 ## PCIe still at Gen1 after install
 
-- Confirm IOMMU passthrough mode is enabled. Depending on your operating system, enabling IOMMU passthrough can vary.
+First, verify with the honest indicator (never `nvidia-smi`, which caches
+probe-time values):
 
+    sudo ./tools/watch-setup.sh verify     # reads LnkSta per card
+
+If Gen1 persists:
+
+- Confirm IOMMU passthrough mode is enabled (the installer configures it;
+  `--no-iommu` skips it).
+- Find the watcher trace: `journalctl -b 0 | grep "flip detected"` (initramfs
+  stage; also `/var/log/cmp-gen2-watch.log` for the userspace stage). You
+  should see one flip + retrain per card. No flip line at all means the
+  driver patches did not open the advertisement window (check dmesg for the
+  SEC2_DEBUG lines); a flip without a resulting `LnkSta` speed change means
+  the retrain did not take.
+- The most common historical cause was structural, not configuration: the
+  old timer-based hammer fired after the ~0.4 s advertisement window had
+  already closed on slow-booting systems (module loading from the
+  initramfs puts the window before systemd starts). The two-stage
+  advertisement-triggered watcher replaced it precisely for that case —
+  see [gen2-window.md](gen2-window.md) for the measured mechanism,
+  including why a late retrain fails silently (a retrain whose effective
+  target equals the current speed is a spec-level no-op).
 - If this still persists, refer to the Discord protocol at the end of the document.
 
 ---

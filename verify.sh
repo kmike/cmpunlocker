@@ -136,11 +136,12 @@ fi
 echo ""
 ok "All ${#GPU_BDFS[@]} unlockable GPU(s) report unlocked memory"
 
-if [[ -x "${SCRIPT_DIR}/tools/service.sh" ]]; then
+if [[ -x "${SCRIPT_DIR}/tools/watch-setup.sh" ]]; then
     echo ""
     info "Checking negotiated PCIe generation"
-    if ! "${SCRIPT_DIR}/tools/service.sh" verify; then
+    if ! "${SCRIPT_DIR}/tools/watch-setup.sh" verify; then
         warn "Memory unlock is healthy, but PCIe Gen2 is not active"
+        warn "See docs/gen2-window.md — on slow-booting systems the window opens before userspace; check journalctl -b | grep 'flip detected'"
         exit 1
     fi
 fi
