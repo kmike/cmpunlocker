@@ -76,13 +76,14 @@ install_stage() {
     ok "Enabled ${UNIT_NAME} (starts on next boot; not started now)"
 
     # initramfs stages — install whichever generators exist
-    if [ -d /usr/lib/dracut/modules.d ]; then
+    if command -v dracut >/dev/null 2>&1 && [ -d /usr/lib/dracut/modules.d ]; then
         mkdir -p "${DRACUT_DST}"
         install -m 0755 "${DRACUT_SRC}/module-setup.sh" "${DRACUT_DST}/"
         install -m 0755 "${DRACUT_SRC}/run.sh" "${DRACUT_DST}/"
         ok "Installed dracut module 90cmpgen2watch"
     fi
     if [ -d /etc/initramfs-tools ]; then
+        mkdir -p /etc/initramfs-tools/hooks /etc/initramfs-tools/scripts/init-top
         install -m 0755 "${IT_HOOK_SRC}" /etc/initramfs-tools/hooks/cmp-gen2-watch
         mkdir -p /etc/initramfs-tools/scripts/init-top
         install -m 0755 "${IT_TOP_SRC}" /etc/initramfs-tools/scripts/init-top/cmp-gen2-watch
