@@ -71,6 +71,9 @@ static long now_ms(void) {
 }
 
 static int kmsg_fd = -1;
+static void kmsg_try_open(void) {
+    if (kmsg_fd < 0) kmsg_fd = open("/dev/kmsg", O_WRONLY);
+}
 static void logline(const char *fmt, ...) {
     va_list ap;
     char buf[512];
@@ -257,7 +260,7 @@ int main(int argc, char **argv) {
                               "from its parent port the moment its LnkCap advertises >= target.\n"); return 2; }
     }
     setvbuf(stdout, NULL, _IONBF, 0);   /* survive switch_root kills */
-    kmsg_fd = open("/dev/kmsg", O_WRONLY);  /* best effort; dual-log */
+    kmsg_try_open();                    /* best effort; retried below */
 
     card_t cards[MAX_CARDS];
     memset(cards, 0, sizeof cards);
@@ -280,6 +283,7 @@ int main(int argc, char **argv) {
 
     long t0 = now_ms();
     for (long t = 0; !stop; t = now_ms() - t0) {
+        if (kmsg_fd < 0 && (t & 0x3FF) == 0) kmsg_try_open();  /* ~1s cadence */
         for (int i = 0; i < n; i++) {
             card_t *c = &cards[i];
             uint32_t lcap = r32(c->cfgfd, c->gcap + 0x0c);

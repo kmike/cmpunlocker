@@ -1,18 +1,25 @@
 [Unit]
 Description=CMP 170HX PCIe Gen2 advertisement-triggered retrain (userspace stage)
+# Start at the earliest userspace moment: the advertisement window can
+# open within seconds of udev coldplug binding the driver, and a
+# multi-user.target pull-in was measured starting this unit at T+9-15s
+# — occasionally AFTER the window had already opened and closed. With
+# sysinit + DefaultDependencies=no the unit is up at T+2-4s, and the
+# initramfs-stage watcher (spawned pre-udev, surviving pivot) overlaps
+# from below: coverage is continuous from initramfs start to T+90s.
+DefaultDependencies=no
 After=systemd-udevd.service
 ConditionPathExists=/usr/local/sbin/cmp-gen2-watch
 
 [Service]
 Type=simple
-# Self-bounded: the watcher exits on its own after --duration-ms.
-# Catches advertisement windows that open after pivot (module loaded
-# from the root fs); the initramfs hooks cover the initramfs-loaded
-# shape. Both stages are state-triggered, never timer-blind.
+# Self-bounded: the watcher exits on its own after --duration-ms, and
+# exits immediately when every card is already trained (fast path) —
+# zero boot cost in the common case.
 ExecStart=/usr/local/sbin/cmp-gen2-watch --duration-ms 90000
 TimeoutStartSec=120
 StandardOutput=append:/var/log/cmp-gen2-watch.log
 StandardError=append:/var/log/cmp-gen2-watch.log
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target
