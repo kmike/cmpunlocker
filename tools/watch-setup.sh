@@ -68,7 +68,6 @@ install_stage() {
     require_root
     build
 
-
     # userspace stage (clean stale wants-symlinks from earlier unit
     # versions that used a different Install target, then enable)
     install -m 0644 "${UNIT_SRC}" "${UNIT_DST}"
@@ -87,7 +86,6 @@ install_stage() {
     if [ -d /etc/initramfs-tools ]; then
         mkdir -p /etc/initramfs-tools/hooks /etc/initramfs-tools/scripts/init-top
         install -m 0755 "${IT_HOOK_SRC}" /etc/initramfs-tools/hooks/cmp-gen2-watch
-        mkdir -p /etc/initramfs-tools/scripts/init-top
         install -m 0755 "${IT_TOP_SRC}" /etc/initramfs-tools/scripts/init-top/cmp-gen2-watch
         ok "Installed initramfs-tools hooks"
     fi
@@ -96,7 +94,7 @@ install_stage() {
         update-initramfs -u -k "$(uname -r)"
     elif command -v dracut >/dev/null 2>&1; then
         info "Rebuilding initramfs (dracut)"
-        dracut -f --kver "$(uname -r)"
+        dracut -f
     fi
     disable_legacy
     ok "Gen2 watcher armed for the next boot"

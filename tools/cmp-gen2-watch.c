@@ -15,12 +15,12 @@
  * Retrain Link bursts (50 ms apart) for as long as the flip is live.
  * A link that trains Gen2 inside the window stays Gen2 after it closes.
  *
- * Deployment stages (both install by tools/watch-setup.sh):
- *   - initramfs (dracut module / initramfs-tools hook): catches windows
- *     that open while the module loads from the initramfs (server boot
- *     shapes; systemd userspace may start later than the window).
- *   - systemd userspace unit: catches windows that open after pivot
- *     (module loaded from the root filesystem).
+ * Deployment stages (both installed by tools/watch-setup.sh):
+ *   - initramfs (dracut module / initramfs-tools hook): spawned before
+ *     udev coldplug and — crucially — survives the pivot to the real
+ *     root, so it covers every window from initramfs start onward;
+ *   - systemd userspace unit as the second net, pulled in at
+ *     sysinit.target with DefaultDependencies=no.
  *
  * Auto-discovers every supported GPU and its nearest downstream parent
  * port (root port or switch downstream port). No configuration needed.
@@ -43,7 +43,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include <errno.h>
 #include <limits.h>
 
 #define SYS_PCI "/sys/bus/pci/devices"
@@ -58,8 +57,6 @@ typedef struct {
     int pfd;                   /* parent config fd */
     int pcap, gcap;            /* PCIe cap offsets */
     uint32_t last_lcap;
-    uint32_t saved_pctl2;
-    int pctl2_touched;
     long last_burst;
     int announced;
 } card_t;
@@ -140,10 +137,10 @@ static int find_pcie_cap(int fd) {
     return 0;
 }
 
-/* PCIECAP bits 7:4 port type; downstream-capable = root port (4) or
- * switch downstream (6); upstream = 5; endpoint = 0/1 */
+/* PCIECAP register is at cap+0x02 (byte 0 = cap id, byte 1 = next
+ * ptr); bits 7:4 port type. Downstream-capable = root port (4) or
+ * switch downstream (6). */
 static int port_type(int fd, int cap) {
-    /* PCIECAP register sits at cap+0x02 (byte 0 = cap id, byte 1 = next ptr) */
     uint16_t p = r16(fd, cap + 0x02);
     if (p == 0xFFFF) return -1;
     return (p >> 4) & 0xF;
@@ -229,10 +226,13 @@ static int discover(card_t *cards, int max) {
     return n;
 }
 
+/* Raise the parent's target link speed. Left in place on exit:
+ * a parent port with TLS already at target is the correct persistent
+ * state — it is what makes any later retrain (ours or anyone else's)
+ * able to train up. Idempotent. */
 static void parent_set_tls(card_t *c, int target) {
     uint16_t v = r16(c->pfd, c->pcap + 0x30);
     if (v == 0xFFFF) return;
-    if (!c->pctl2_touched) { c->saved_pctl2 = v; c->pctl2_touched = 1; }
     uint16_t nv = (v & ~0x000F) | (target & 0xF);
     if (nv != v) w16(c->pfd, c->pcap + 0x30, nv);
 }
@@ -314,7 +314,6 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < n; i++) {
         card_t *c = &cards[i];
-        if (c->pctl2_touched) w16(c->pfd, c->pcap + 0x30, c->saved_pctl2);
         uint16_t sta = r16(c->cfgfd, c->gcap + 0x12);
         logline("# %s final LnkSta=%04x (%s)", c->bdf, sta,
                 (sta != 0xFFFF && (sta & 0xF) >= (uint16_t)target) ? "GEN2+" : "gen1");
