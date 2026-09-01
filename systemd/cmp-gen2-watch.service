@@ -1,6 +1,5 @@
 [Unit]
 Description=CMP 170HX PCIe Gen2 advertisement-triggered retrain (userspace stage)
-Documentation=file:/usr/local/share/cmpunlocker/gen2-window.md
 After=systemd-udevd.service
 ConditionPathExists=/usr/local/sbin/cmp-gen2-watch
 

@@ -67,8 +67,7 @@ disable_legacy() {
 install_stage() {
     require_root
     build
-mkdir -p /usr/local/share/cmpunlocker
-install -m 0644 "${PROJECT_DIR}/docs/gen2-window.md" /usr/local/share/cmpunlocker/gen2-window.md
+
 
     # userspace stage
     install -m 0644 "${UNIT_SRC}" "${UNIT_DST}"

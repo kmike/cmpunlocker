@@ -69,7 +69,7 @@ for unit in gen2.service cmp-gen2-watch.service; do
 done
 rm -f /etc/systemd/system/gen2.service /usr/local/sbin/gen2-hammer
 rm -f /etc/systemd/system/cmp-gen2-watch.service /usr/local/sbin/cmp-gen2-watch
-rm -rf /usr/lib/dracut/modules.d/90cmpgen2watch /usr/local/share/cmpunlocker
+rm -rf /usr/lib/dracut/modules.d/90cmpgen2watch
 rm -f /etc/initramfs-tools/hooks/cmp-gen2-watch \
       /etc/initramfs-tools/scripts/init-top/cmp-gen2-watch
 if command -v update-initramfs >/dev/null 2>&1; then
