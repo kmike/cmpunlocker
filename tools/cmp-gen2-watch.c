@@ -202,7 +202,7 @@ static int discover(card_t *cards, int max) {
         if (!is_supported_gpu(e)) continue;
         card_t *c = &cards[n];
         memset(c, 0, sizeof *c);
-        snprintf(c->bdf, sizeof c->bdf, "%s", e->d_name);
+        snprintf(c->bdf, sizeof c->bdf, "%.31s", e->d_name);  /* bounded: dirent names */
         if (find_retrain_parent(c->bdf, c->parent, sizeof c->parent)) {
             logline("# %s: no downstream parent port found, skipping", c->bdf);
             continue;
