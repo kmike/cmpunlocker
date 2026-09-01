@@ -70,15 +70,19 @@ static long now_ms(void) {
     return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+static int kmsg_fd = -1;
 static void logline(const char *fmt, ...) {
     va_list ap;
     char buf[512];
     va_start(ap, fmt);
     int n = vsnprintf(buf, sizeof buf, fmt, ap);
     va_end(ap);
-    if (n > 0) {
-        fputs(buf, stdout);
-        fputs("\n", stdout);
+    if (n <= 0) return;
+    fputs(buf, stdout);
+    fputs("\n", stdout);
+    if (kmsg_fd >= 0) {
+        ssize_t r = write(kmsg_fd, buf, (size_t)n);   /* one line per kmsg record */
+        (void)r;
     }
 }
 
@@ -136,7 +140,8 @@ static int find_pcie_cap(int fd) {
 /* PCIECAP bits 7:4 port type; downstream-capable = root port (4) or
  * switch downstream (6); upstream = 5; endpoint = 0/1 */
 static int port_type(int fd, int cap) {
-    uint16_t p = r16(fd, cap);
+    /* PCIECAP register sits at cap+0x02 (byte 0 = cap id, byte 1 = next ptr) */
+    uint16_t p = r16(fd, cap + 0x02);
     if (p == 0xFFFF) return -1;
     return (p >> 4) & 0xF;
 }
@@ -252,6 +257,7 @@ int main(int argc, char **argv) {
                               "from its parent port the moment its LnkCap advertises >= target.\n"); return 2; }
     }
     setvbuf(stdout, NULL, _IONBF, 0);   /* survive switch_root kills */
+    kmsg_fd = open("/dev/kmsg", O_WRONLY);  /* best effort; dual-log */
 
     card_t cards[MAX_CARDS];
     memset(cards, 0, sizeof cards);
