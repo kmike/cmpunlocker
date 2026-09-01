@@ -8,7 +8,7 @@ CMP 170HX (`10de:20c2`), driver `610.43.02`, dual-socket server board
 ## The three facts
 
 1. **The patch opens a short window, not a persistent state.** The
-   Gen2 driver patch (`driver/patches/0007-pcie-gen2.patch`) flips the
+   Gen2 driver patch (`driver/patches/pcie-gen2.patch`) flips the
    endpoint's `LnkCap`/`LnkCtl2` to Gen2 during GSP bootstrap. On some driver/platform combinations firmware reverts the
    flip roughly **0.4 s later**. Outside that window the endpoint
    advertises Gen1, and a retrain against it lands Gen1 no matter what
