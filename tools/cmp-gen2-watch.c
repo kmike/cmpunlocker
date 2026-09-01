@@ -258,6 +258,17 @@ int main(int argc, char **argv) {
     int n = discover(cards, MAX_CARDS);
     if (!n) { logline("# no supported GPUs found; nothing to do"); return 0; }
 
+    /* fast path: if every card is already trained at/above target
+     * (e.g. the initramfs stage already caught the window), exit at
+     * once so the userspace unit never delays boot. */
+    int all_trained = 1;
+    for (int i = 0; i < n; i++) {
+        uint16_t sta = r16(cards[i].cfgfd, cards[i].gcap + 0x12);
+        logline("# %s initial LnkSta=%04x", cards[i].bdf, sta);
+        if (sta == 0xFFFF || (sta & 0xF) < (uint16_t)target) all_trained = 0;
+    }
+    if (all_trained) { logline("# all cards already at/above Gen%d; exiting", target); return 0; }
+
     signal(SIGALRM, on_alrm);
     alarm((duration_ms / 1000) + 5);
 
